@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#f5f7f3">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Gowun+Batang:wght@700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/5.6.0/maplibre-gl.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/5.6.0/maplibre-gl.min.js"></script>
 <style>
@@ -270,6 +270,92 @@ details.more[open] summary svg{transform:rotate(180deg)}
   .panel,.modal{transition:opacity 150ms linear!important}
 }
 </style>
+<style id="mono-soft">
+/* ── 모노 소프트 + 상태 알약은 하드: 회백 종이·먹색 강조·면으로 구분, 상태색은 점과 글자에만 ── */
+:root{
+  --paper:oklch(97.2% 0.003 90); --paper-2:oklch(94% 0.004 90); --paper-3:oklch(90.5% 0.005 90);
+  --card:oklch(100% 0 0);
+  --ink:oklch(20% 0.006 80); --ink-2:oklch(38% 0.006 80); --ink-3:oklch(54% 0.006 80);
+  --rule:oklch(90% 0.005 90); --rule-2:oklch(82% 0.005 90);
+  --accent:oklch(20% 0.006 80); --accent-2:oklch(30% 0.006 80); --accent-soft:oklch(93% 0.004 90);
+  --busy:oklch(48% 0.17 30); --busy-soft:transparent; --mid:oklch(56% 0.14 72); --mid-soft:transparent; --calm:oklch(50% 0.12 155); --calm-soft:transparent;
+  --data:oklch(42% 0.006 80); --data-soft:oklch(94% 0.004 90); --na:oklch(60% 0.006 80); --na-bg:transparent;
+  --focus:oklch(50% 0.17 30);
+  --shadow-contact:0 1px 2px oklch(0% 0 0 / .06); --shadow-ambient:0 6px 20px -10px oklch(0% 0 0 / .18);
+  --shadow-panel:0 16px 44px -20px oklch(0% 0 0 / .32), 0 0 0 1px oklch(0% 0 0 / .05);
+  --r-card:12px; --r-input:10px; --r-pill:999px;
+  --font-brand:'IBM Plex Sans KR','Apple SD Gothic Neo',sans-serif;
+}
+.brand b{font-weight:700;letter-spacing:-.03em;font-size:16px}
+.brand,.chip{background:var(--card)}
+.panel{background:var(--paper);border-radius:18px 18px 0 0}
+@media (min-width:900px){.panel{border-radius:16px}}
+.phead{border-bottom:0}
+.seg{background:var(--paper-2)}
+.seg .thumb{background:var(--card)}
+.day{background:var(--card);border-color:transparent}
+.day.we{background:var(--paper-2)}
+@media (hover:hover){.day:hover{border-color:var(--rule-2)}}
+.day[aria-pressed="true"]{background:var(--ink);border-color:var(--ink)}
+.day[aria-pressed="true"] *{color:var(--paper)}
+/* summary: quiet grey block */
+.hero{background:var(--paper-2);color:var(--ink)}
+.hero.quiet{background:var(--paper-2)}
+.hero .num{font-family:var(--font);font-weight:700;letter-spacing:-.04em}
+.hero .num small{opacity:.55;font-weight:500}
+.hero .d{opacity:1;color:var(--ink-3)}
+.hero .arrow{color:var(--ink-3)}
+/* status pills: dot + text only (hard) */
+.pill{padding:0;height:auto;background:transparent!important;gap:6px;font-size:12px}
+.pill.na{color:var(--ink-3)}
+/* rows: white surfaces, no border */
+.row{background:var(--card);border-color:transparent}
+@media (hover:hover){.row:hover{border-color:transparent;box-shadow:var(--shadow-ambient)}}
+.row.hi{border-color:var(--ink);box-shadow:none}
+.ph{background:var(--paper-2);border-radius:8px}
+details.more summary{color:var(--ink-2)}
+/* swap card */
+.swap{background:var(--card);border-color:transparent}
+.swap.hi{border-color:var(--ink);box-shadow:none}
+@media (hover:hover){.swap:hover{border-color:transparent;box-shadow:var(--shadow-ambient)}}
+.swap .a{background:var(--paper-2)}
+.swap .b .lead{color:var(--ink)}
+.tag{background:var(--paper-2);color:var(--ink);border-radius:6px}
+.tag.eff{background:var(--ink);color:var(--paper)}
+.tag.data{background:var(--paper-2);color:var(--ink-3)}
+.tag.na{color:var(--ink-3)}
+.btn{background:var(--ink);color:var(--paper)}
+@media (hover:hover){.btn:hover{background:var(--accent-2)}}
+.btn.ghost{background:var(--card);border-color:var(--rule-2);color:var(--ink)}
+.btn.loading::after{border-color:oklch(100% 0 0 / .35);border-top-color:var(--paper)}
+.cell[aria-pressed="true"]{outline-color:var(--ink)}
+/* course */
+.stat{background:var(--card)}
+.stat b{letter-spacing:-.03em}
+.stop{background:var(--card);border-color:transparent}
+.n.a{background:var(--ink)} .n.c{background:var(--ink-3)} .n.w{background:var(--ink-2)}
+.stop a{background:var(--paper-2);color:var(--ink)}
+.card{background:var(--card)}
+.empty{background:var(--card);border-style:solid;border-color:transparent}
+.err{background:var(--card);border:1px solid var(--busy);color:var(--busy)}
+.sk{background:linear-gradient(90deg,var(--paper-2) 25%,var(--paper-3) 50%,var(--paper-2) 75%);background-size:200% 100%}
+/* map markers */
+.mk{background:var(--card);box-shadow:0 1px 2px oklch(0% 0 0 / .1),0 4px 12px -6px oklch(0% 0 0 / .25)}
+.mk.hi{border-color:var(--ink)}
+.mk .v{color:var(--ink-3)}
+.mk.alt{background:var(--ink);color:var(--paper)}
+.mk.alt::before{background:var(--paper)}
+.mk.alt .v{color:oklch(100% 0 0 / .7)}
+.compact .mk.minor:not(.hi){box-shadow:0 0 0 2px var(--card)}
+.maplibregl-ctrl-group{background:var(--card)!important}
+/* overlays */
+.modal{background:var(--paper)}
+.modal .x{background:var(--card)}
+.rgrid button{background:var(--card);border-color:transparent}
+.rgrid button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.kv td:first-child{color:var(--ink)}
+.modal .stat{background:var(--card)}
+</style>
 </head>
 <body>
 
@@ -277,7 +363,7 @@ details.more[open] summary svg{transform:rotate(180deg)}
 
 <header class="bar">
   <div class="brand" aria-label="인파서블">
-    <svg class="mark" viewBox="0 0 24 24" aria-hidden="true"><circle cx="7" cy="8" r="2.4" fill="oklch(50% 0.16 30)"/><circle cx="12" cy="8" r="2.4" fill="oklch(50% 0.16 30)"/><circle cx="17" cy="8" r="2.4" fill="oklch(50% 0.16 30)"/><path d="M4 19c3-6 8-8 16-7" stroke="oklch(40% 0.095 158)" stroke-width="2.4" fill="none" stroke-linecap="round"/><circle cx="20" cy="12" r="2.6" fill="oklch(40% 0.095 158)"/></svg>
+    <svg class="mark" viewBox="0 0 24 24" aria-hidden="true"><circle cx="7" cy="8" r="2.4" fill="oklch(50% 0.16 30)"/><circle cx="12" cy="8" r="2.4" fill="oklch(50% 0.16 30)"/><circle cx="17" cy="8" r="2.4" fill="oklch(50% 0.16 30)"/><path d="M4 19c3-6 8-8 16-7" stroke="oklch(20% 0.006 80)" stroke-width="2.4" fill="none" stroke-linecap="round"/><circle cx="20" cy="12" r="2.6" fill="oklch(20% 0.006 80)"/></svg>
     <b>인파서블</b>
   </div>
   <button class="chip" id="regionBtn" onclick="openPicker()" aria-haspopup="dialog">
@@ -626,7 +712,7 @@ const STYLE_PAINT={'highway-primary':'#fbf1d6','highway-trunk':'#fbf1d6','highwa
   'bridge-trunk-primary':'#fbf1d6','bridge-secondary-tertiary':'#fbf3dc','bridge-motorway':'#f6dfb3','bridge-motorway-link':'#f6dfb3','bridge-link':'#fbf3dc',
   'highway-primary-casing':'#e3cfae','highway-trunk-casing':'#e3cfae','highway-secondary-tertiary-casing':'#e6d6ba','highway-motorway-casing':'#ddbf95','highway-motorway-link-casing':'#ddbf95','highway-link-casing':'#e6d6ba',
   'bridge-trunk-primary-casing':'#e3cfae','bridge-secondary-tertiary-casing':'#e6d6ba','bridge-motorway-casing':'#ddbf95','bridge-motorway-link-casing':'#ddbf95','bridge-link-casing':'#e6d6ba',
-  'background':'#f6f3ee','park':'#d3e5c3','landcover-grass':'#d3e5c3','landcover-grass-park':'#d3e5c3','landcover-wood':'#9cc48a','water':'#b3d1e4'};
+  'background':'#f4f3f0','park':'#dde6d6','landcover-grass':'#dde6d6','landcover-grass-park':'#dde6d6','landcover-wood':'#b3c7a9','water':'#c5d4dd'};
 function ensureMap(){ if(MAPREADY) return MAPREADY;
   MAPREADY=(async()=>{
     let style=STYLE_URL;
@@ -635,7 +721,10 @@ function ensureMap(){ if(MAPREADY) return MAPREADY;
         if(STYLE_MINZOOM[l.id]!=null) l.minzoom=STYLE_MINZOOM[l.id];
         const c=STYLE_PAINT[l.id]; if(c){ l.paint=l.paint||{}; const k=l.type==='background'?'background-color':l.type==='line'?'line-color':'fill-color'; l.paint[k]=c; }
         if(l.id==='building'){ l.paint['fill-color']='#ebe4dc'; l.paint['fill-opacity']=['interpolate',['linear'],['zoom'],14.5,0,15.5,1]; }
-        if(l.id==='landcover-wood'){ l.paint['fill-opacity']=0.35; } });
+        if(l.id==='landcover-wood'){ l.paint['fill-opacity']=0.3; }
+        // 버스정류장 숨김: 교통 POI는 공항·철도만, 일반 POI에서도 bus 제외
+        if(l.id==='poi_transit') l.filter=['match',['get','class'],['airport','rail'],true,false];
+        if(/^poi_r\d+$/.test(l.id)) l.filter=['all', l.filter, ['!=',['get','class'],'bus']]; });
       style=j; }catch(e){}
     MAP=new maplibregl.Map({container:'map',style,center:[127.8,36.5],zoom:6.5,attributionControl:false,dragRotate:false,pitchWithRotate:false});
     MAP.addControl(new maplibregl.AttributionControl({compact:true}), isDesk()?'bottom-right':'top-right');
@@ -645,8 +734,8 @@ function ensureMap(){ if(MAPREADY) return MAPREADY;
     await new Promise(res=>MAP.once('load',res));
     MAP.addSource('lines',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
     MAP.addLayer({id:'ln-from',type:'line',source:'lines',filter:['==',['get','k'],'from'],paint:{'line-color':'#b3453a','line-width':2,'line-dasharray':[1,3],'line-opacity':.85}});
-    MAP.addLayer({id:'ln-alt',type:'line',source:'lines',filter:['==',['get','k'],'alt'],paint:{'line-color':'#2f6a4e','line-width':2,'line-dasharray':[1,3],'line-opacity':.8}});
-    MAP.addLayer({id:'ln-route',type:'line',source:'lines',filter:['==',['get','k'],'route'],layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#2f6a4e','line-width':3.5,'line-opacity':.9}});
+    MAP.addLayer({id:'ln-alt',type:'line',source:'lines',filter:['==',['get','k'],'alt'],paint:{'line-color':'#2a2a27','line-width':1.5,'line-dasharray':[1,3],'line-opacity':.7}});
+    MAP.addLayer({id:'ln-route',type:'line',source:'lines',filter:['==',['get','k'],'route'],layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#2a2a27','line-width':3,'line-opacity':.9}});
     return MAP;
   })();
   return MAPREADY; }
@@ -668,7 +757,7 @@ async function drawLayer(){
   if(!S) return; const y=S.selYmd, pts=[], lines=[];
   const add=(lat,lng,html,cls,key,bg)=>{ addMarker([lng,lat],html,cls,key,bg); pts.push([lng,lat]); };
   if(VIEW===2 && COURSE){
-    const cols={a:'#2a4a3a',c:'#a8701f',w:'#3d5573'};
+    const cols={a:'#2a2a27',c:'#7a7a75',w:'#4a4a46'};
     const s0=COURSE.stops[0], near=COURSE.from && haversine(COURSE.from.lat,COURSE.from.lng,s0.lat,s0.lng)<6000;
     if(COURSE.from){ addMarker([COURSE.from.lng,COURSE.from.lat],`<span>${esc(COURSE.fromHub)}</span><span class="v">${R(COURSE.fromRate)}</span>`,'busy dim');
       lines.push(lineF('from',[[COURSE.from.lng,COURSE.from.lat],[s0.lng,s0.lat]])); if(near) pts.push([COURSE.from.lng,COURSE.from.lat]); }
