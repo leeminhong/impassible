@@ -9,8 +9,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Gowun+Batang:wght@700&display=swap">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/5.6.0/maplibre-gl.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/5.6.0/maplibre-gl.min.js"></script>
 <style>
 /* ─────────────────────────────────────────────
    tokens — paper tinted toward the pine anchor; one accent; semantics kept apart
@@ -47,13 +47,14 @@ svg.i{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;stro
 
 /* ── stage: the map is the page ── */
 #map{position:fixed;inset:0;background:var(--paper-2);z-index:0}
-.leaflet-container{font-family:var(--font);background:var(--paper-2)}
-.leaflet-control-attribution{font-size:10px;background:oklch(97.5% 0.008 150 / .8);color:var(--ink-3)}
-.leaflet-control-attribution a{color:var(--ink-2)}
-.leaflet-tile-pane{filter:saturate(.72) contrast(.96)}
-.leaflet-bar{border:0!important;border-radius:12px!important;box-shadow:var(--shadow-contact),var(--shadow-ambient)!important;overflow:hidden;margin:0 16px 16px 0!important}
-.leaflet-bar a{width:36px!important;height:36px!important;line-height:36px!important;background:var(--paper)!important;color:var(--ink)!important;border-bottom:1px solid var(--rule)!important;font-weight:400}
-.leaflet-bar a:last-child{border-bottom:0!important}
+.maplibregl-map{font-family:var(--font)}
+.maplibregl-ctrl-attrib{font-size:10px;background:oklch(97.5% 0.008 150 / .8)!important;color:var(--ink-3);border-radius:8px 0 0 0}
+.maplibregl-ctrl-attrib a{color:var(--ink-2)}
+.maplibregl-ctrl-group{border-radius:12px!important;box-shadow:var(--shadow-contact),var(--shadow-ambient)!important;background:var(--paper)!important;margin:0 16px 16px 0!important;overflow:hidden}
+.maplibregl-ctrl-group button{width:36px!important;height:36px!important;border-bottom:1px solid var(--rule)!important}
+.maplibregl-ctrl-group button:last-child{border-bottom:0!important}
+.maplibregl-ctrl-group button+button{border-top:0!important}
+.maplibregl-marker{cursor:pointer}
 
 /* ── top bar ── */
 .bar{position:fixed;top:0;left:0;right:0;height:var(--bar-h);padding:0 16px;padding-top:env(safe-area-inset-top,0px);display:flex;align-items:center;gap:10px;z-index:30;pointer-events:none}
@@ -217,8 +218,8 @@ details.more[open] summary svg{transform:rotate(180deg)}
 .mk.alt .v{color:oklch(97% 0.01 150 / .8)}
 .mk.n{width:30px;height:30px;padding:0;justify-content:center;border-radius:50%;color:oklch(97% 0.01 150);font-size:12.5px}
 .mk.n::before{display:none}
-.mkwrap{background:none;border:0}
-.leaflet-marker-icon.hiz{z-index:1000!important}
+.mkwrap{display:block}
+.maplibregl-marker.hiz{z-index:1000}
 .mk.pop{animation:pop var(--dur-3) var(--ease-out)}
 @keyframes pop{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
 .route{stroke-dasharray:2 9;animation:dash 1.6s linear infinite}
@@ -270,7 +271,7 @@ details.more[open] summary svg{transform:rotate(180deg)}
   </div>
   <button class="chip" id="regionBtn" onclick="openPicker()" aria-haspopup="dialog">
     <svg class="i" viewBox="0 0 24 24"><path d="M12 21s-6-5.3-6-11a6 6 0 0 1 12 0c0 5.7-6 11-6 11z"/><circle cx="12" cy="10" r="2.2"/></svg>
-    <span id="regionName">강남구</span>
+    <span id="regionName">종로구</span>
     <svg class="i" viewBox="0 0 24 24" style="width:14px;height:14px"><path d="m6 9 6 6 6-6"/></svg>
   </button>
   <span class="sp"></span>
@@ -382,28 +383,42 @@ async function probeBaseYm(areaCd, signguCd){
 
 /* ═══════════ 사진 (TourAPI 키워드 검색, 느리게·조용히) ═══════════ */
 const photoCache = new Map();
+const PHOTO_TYPES=new Set(['12','14','15','25','28']);
+function kwVariants(names){
+  const out=[]; names.filter(Boolean).forEach(n=>{ const base=n.replace(/\([^)]*\)/g,'').trim();
+    [n, base, base.split('/')[0].trim(), base.replace(/\//g,' ').trim(), base.replace(/(거리|역|시장|점|본점)$/,'').trim(), base.replace(/\s+/g,'')].forEach(k=>{ if(k&&k.length>=2&&!out.includes(k)) out.push(k); }); });
+  return out.slice(0,6);
+}
 async function photoFor(names, regnCd, sg){
-  const key = names.join('|'); if(photoCache.has(key)) return photoCache.get(key);
+  const key = names.join('|')+'@'+(regnCd||''); if(photoCache.has(key)) return photoCache.get(key);
   const p = (async()=>{
-    const kws=[...new Set(names.filter(Boolean).flatMap(n=>[n, n.replace(/\([^)]*\)/g,'').replace(/\/.*$/,'').trim(), n.replace(/(거리|역|시장)$/,'')]).filter(k=>k.length>=2))];
-    for(const kw of kws.slice(0,4)){
-      try{ const q={keyword:kw,numOfRows:8,arrange:'A',pageNo:1}; if(regnCd) q.lDongRegnCd=regnCd;
-        const it=items(await api('kw',q)).filter(x=>x.firstimage && ['12','14','15','25','28'].includes(String(x.contenttypeid)));
-        const nk=normKP(kw); const hit=it.find(x=>normKP(x.title).includes(nk)||nk.includes(normKP(x.title)))||it[0];
-        if(hit) return {img:hit.firstimage, lat:+hit.mapy, lng:+hit.mapx, title:hit.title}; }catch(e){}
+    const kws=kwVariants(names); let fallback=null;
+    const score=(x,kw)=>{ const t=normKP(x.title), k=normKP(kw); let sc= t===k?4 : (t.includes(k)||k.includes(t))?3 : 0; if(!sc) return 0; if(PHOTO_TYPES.has(String(x.contenttypeid))) sc+=1; return sc; };
+    for(const kw of kws){
+      for(const scoped of [true,false]){
+        if(!scoped && !regnCd) continue;
+        try{ const q={keyword:kw,numOfRows:10,arrange:'A',pageNo:1}; if(scoped&&regnCd) q.lDongRegnCd=regnCd;
+          const it=items(await api('kw',q)).filter(x=>x.firstimage);
+          if(!it.length) continue;
+          const ranked=it.map(x=>({x,sc:score(x,kw)})).sort((u,v)=>v.sc-u.sc);
+          if(ranked[0].sc>=3){ const h=ranked[0].x; return {img:h.firstimage,lat:+h.mapy,lng:+h.mapx,title:h.title}; }
+          if(!fallback){ const h=it.find(x=>PHOTO_TYPES.has(String(x.contenttypeid)))||it[0]; fallback={img:h.firstimage,lat:+h.mapy,lng:+h.mapx,title:h.title,weak:true}; }
+        }catch(e){}
+      }
     }
-    return null;
+    return fallback;
   })();
   photoCache.set(key,p); return p;
 }
 let photoQueue=[], photoBusy=0;
 function wantPhoto(el, names, regnCd, sg){ photoQueue.push({el,names,regnCd,sg}); pumpPhotos(); }
 async function pumpPhotos(){
-  while(photoBusy<3 && photoQueue.length){ const job=photoQueue.shift(); if(!job.el.isConnected) continue; photoBusy++;
+  while(photoBusy<4 && photoQueue.length){ const job=photoQueue.shift(); if(!job.el.isConnected) continue; photoBusy++;
     photoFor(job.names, job.regnCd, job.sg).then(r=>{ if(r&&job.el.isConnected){ const im=new Image(); im.alt=''; im.onload=()=>{ job.el.innerHTML=''; job.el.appendChild(im); requestAnimationFrame(()=>im.classList.add('ok')); }; im.src=r.img; } })
       .finally(()=>{ photoBusy--; pumpPhotos(); }); }
 }
-const phHtml = (names, regnCd, sg) => `<div class="ph" data-ph="${esc(names.join('|'))}" data-rg="${esc(regnCd||'')}" data-sg="${esc(sg||'')}"><span class="glyph">${ICON.photo}</span></div>`;
+const phHtml = (names, regnCd, sg, img) => img ? `<div class="ph"><img class="ok" src="${esc(img)}" alt="" loading="lazy"></div>`
+  : `<div class="ph" data-ph="${esc(names.filter(Boolean).join('|'))}" data-rg="${esc(regnCd||'')}" data-sg="${esc(sg||'')}"><span class="glyph">${ICON.photo}</span></div>`;
 function bindPhotos(root){ root.querySelectorAll('.ph[data-ph]').forEach(el=>{ const names=el.dataset.ph.split('|'); el.removeAttribute('data-ph'); wantPhoto(el, names, el.dataset.rg||S?.region.areaCd, el.dataset.sg); }); }
 
 /* ═══════════ 상태 ═══════════ */
@@ -510,7 +525,8 @@ function renderForecast(){
   bindPhotos($('anchors'));
   const an=new Set(S.anchors.map(a=>a.n1));
   const rest=S.names1.filter(n=>!an.has(n)).map(n=>({n,v:rateOf(n,y)})).filter(r=>r.v!=null).sort((a,b)=>b.v-a.v);
-  $('rest').innerHTML=rest.length?`<details class="more"><summary>예보만 제공하는 관광지 ${rest.length}곳 ${ICON.chev}</summary>${rest.map(r=>`<div class="row lite"><div><h3>${esc(r.n)}</h3><div class="sub">대안 데이터 미연결</div></div><div class="end">${pill(r.v)}</div></div>`).join('')}</details>`:'';
+  $('rest').innerHTML=rest.length?`<details class="more"><summary>예보만 제공하는 관광지 ${rest.length}곳 ${ICON.chev}</summary>${rest.map(r=>`<div class="row" style="cursor:default">${phHtml([r.n],S.region.areaCd,S.region.signguCd)}<div><h3>${esc(r.n)}</h3><div class="sub">예보만 제공 · 대안 데이터 미연결</div></div><div class="end">${pill(r.v)}</div></div>`).join('')}</details>`:'';
+  $('rest').querySelector('details')?.addEventListener('toggle',e=>{ if(e.target.open) bindPhotos(e.target); },{once:true});
 }
 
 function renderAlts(){
@@ -554,7 +570,7 @@ function renderCourse(){
   $('course').innerHTML=`<div class="course-head"><div><h3>${esc(c.name)} 한갓 코스</h3><p>${fmtD(S.selYmd)} · ${esc(c.fromHub)} 대신 · 도보 ${(c.dist/1000).toFixed(1)}km · 약 ${Math.round(c.dist/67)}분</p></div>
       <button class="chip icon" onclick="shareCourse(this)" aria-label="공유">${ICON.share}</button></div>
     <div class="stats"><div class="stat"><b>−${R(c.fromRate-(c.toRate??c.fromRate))}p</b><span>${esc(c.fromHub)} 대비 집중률</span></div><div class="stat"><b>${c.stops.length}곳</b><span>도보 ${(c.dist/1000).toFixed(1)}km</span></div></div>
-    ${c.stops.map((s,i)=>`<div class="stop"><div class="n ${s.cls}">${i+1}</div>${phHtml([s.t],s.rg,s.sg)}<div><h4>${esc(s.t)}</h4><p>${esc(s.sub)}${i>0?` · 도보 ${Math.round(haversine(c.stops[i-1].lat,c.stops[i-1].lng,s.lat,s.lng)/67)}분`:' · 출발점'}</p></div>
+    ${c.stops.map((s,i)=>`<div class="stop"><div class="n ${s.cls}">${i+1}</div>${phHtml([s.t],s.rg,s.sg,s.img)}<div><h4>${esc(s.t)}</h4><p>${esc(s.sub)}${i>0?` · 도보 ${Math.round(haversine(c.stops[i-1].lat,c.stops[i-1].lng,s.lat,s.lng)/67)}분`:' · 출발점'}</p></div>
       <a href="${kakao(s.t,s.lat,s.lng)}" target="_blank" rel="noopener" aria-label="${esc(s.t)} 카카오맵 길찾기" title="카카오맵 길찾기">${ICON.nav}</a></div>`).join('')}
     <div class="card"><h4>발견 카드</h4><p>${esc(shareText())}</p></div>`;
   bindPhotos($('course'));
@@ -581,8 +597,8 @@ async function buildCourse(btn, name, regnCd, fromHub, fromRate, toRate, sg, n1)
     const cafe=food.find(x=>(x.lclsSystm2==='FD02'||/카페|커피|찻집|베이커리/.test(x.title))&&x.firstimage)||food.find(x=>/카페|커피|찻집/.test(x.title))||food[0];
     const walk=cult.find(x=>norm(x.title)!==norm(name)&&x.firstimage)||cult.find(x=>norm(x.title)!==norm(name));
     const stops=[{t:name,sub:`앵커 · 한적 대안지${toRate!=null?` · 이 날 이곳 기준 ${bandK(toRate)} ${R(toRate)}`:''}`,cls:'a',lat:c.lat,lng:c.lng,rg:regnCd,sg}];
-    if(cafe) stops.push({t:cafe.title,sub:'카페·식사',cls:'c',lat:+cafe.mapy,lng:+cafe.mapx,rg:regnCd,sg});
-    if(walk) stops.push({t:walk.title,sub:'산책·볼거리',cls:'w',lat:+walk.mapy,lng:+walk.mapx,rg:regnCd,sg});
+    if(cafe) stops.push({t:cafe.title,sub:'카페·식사',cls:'c',lat:+cafe.mapy,lng:+cafe.mapx,rg:regnCd,sg,img:cafe.firstimage||''});
+    if(walk) stops.push({t:walk.title,sub:'산책·볼거리',cls:'w',lat:+walk.mapy,lng:+walk.mapx,rg:regnCd,sg,img:walk.firstimage||''});
     let dist=0; for(let i=1;i<stops.length;i++) dist+=haversine(stops[i-1].lat,stops[i-1].lng,stops[i].lat,stops[i].lng);
     const from=coordsOf(fromHub);
     COURSE={name,stops,dist,fromHub,fromRate,toRate,from};
@@ -591,43 +607,76 @@ async function buildCourse(btn, name, regnCd, fromHub, fromRate, toRate, sg, n1)
 }
 
 /* ═══════════ 지도 ═══════════ */
-let MAP=null, LAYER=null, MARK=new Map();
-function ensureMap(){ if(MAP) return; MAP=L.map('map',{zoomControl:false,attributionControl:true});
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19}).addTo(MAP); MAP.setView([36.5,127.8],7);
-  if(isDesk()) L.control.zoom({position:'bottomright'}).addTo(MAP); }
-const mkIcon=(html,cls)=>L.divIcon({className:'mkwrap',html:`<div class="mk ${cls}">${html}</div>`,iconSize:null,iconAnchor:[0,0]});
-function padFit(pts){ if(!pts.length) return; const w=innerWidth,h=innerHeight;
-  const opts=isDesk()?{paddingTopLeft:[16+432+40,80],paddingBottomRight:[40,40]}:{paddingTopLeft:[24,80],paddingBottomRight:[24,Math.min(h*.5,peekPx()+40)]};
-  MAP.fitBounds(pts,{...opts,maxZoom:15}); }
-function drawLayer(){
-  ensureMap(); if(LAYER) LAYER.remove(); LAYER=L.layerGroup().addTo(MAP); MARK.clear();
-  if(!S) return; const y=S.selYmd, pts=[];
-  const add=(latlng,html,cls,key)=>{ const m=L.marker(latlng,{icon:mkIcon(html,cls),riseOnHover:true}).addTo(LAYER); if(key){ MARK.set(key,m); m.on('mouseover',()=>hi(key,true)); m.on('mouseout',()=>hi(null,true)); m.on('click',()=>onMarker(key)); } pts.push(latlng); return m; };
+let MAP=null, MAPREADY=null, MARKERS=[], MARK=new Map();
+const STYLE_URL='https://tiles.openfreemap.org/styles/bright';
+// 멀리서는 동네·공원·물만, 당기면 도로명·건물·상점: 줌 단계별 노출 제어 + 도로 색 완화
+const STYLE_MINZOOM={'highway-name-major':15,'highway-name-minor':16,'highway-name-path':16.5,'highway-shield-non-us':14.5,'road_oneway':16,'road_oneway_opposite':16,'poi_r1':15.5,'poi_r7':16.5,'poi_r20':17.5,'building':14.5,'building-top':14.5};
+const STYLE_PAINT={'highway-primary':'#fbf1d6','highway-trunk':'#fbf1d6','highway-secondary-tertiary':'#fbf3dc','highway-motorway':'#f6dfb3','highway-motorway-link':'#f6dfb3','highway-link':'#fbf3dc',
+  'bridge-trunk-primary':'#fbf1d6','bridge-secondary-tertiary':'#fbf3dc','bridge-motorway':'#f6dfb3','bridge-motorway-link':'#f6dfb3','bridge-link':'#fbf3dc',
+  'highway-primary-casing':'#e3cfae','highway-trunk-casing':'#e3cfae','highway-secondary-tertiary-casing':'#e6d6ba','highway-motorway-casing':'#ddbf95','highway-motorway-link-casing':'#ddbf95','highway-link-casing':'#e6d6ba',
+  'bridge-trunk-primary-casing':'#e3cfae','bridge-secondary-tertiary-casing':'#e6d6ba','bridge-motorway-casing':'#ddbf95','bridge-motorway-link-casing':'#ddbf95','bridge-link-casing':'#e6d6ba',
+  'background':'#f6f3ee','park':'#d3e5c3','landcover-grass':'#d3e5c3','landcover-grass-park':'#d3e5c3','landcover-wood':'#9cc48a','water':'#b3d1e4'};
+function ensureMap(){ if(MAPREADY) return MAPREADY;
+  MAPREADY=(async()=>{
+    let style=STYLE_URL;
+    try{ const j=await fetch(STYLE_URL).then(r=>r.json());
+      j.layers.forEach(l=>{ if(l.layout&&l.layout['text-field']) l.layout['text-field']=["coalesce",["get","name:ko"],["get","name"],["get","name:latin"]];
+        if(STYLE_MINZOOM[l.id]!=null) l.minzoom=STYLE_MINZOOM[l.id];
+        const c=STYLE_PAINT[l.id]; if(c){ l.paint=l.paint||{}; const k=l.type==='background'?'background-color':l.type==='line'?'line-color':'fill-color'; l.paint[k]=c; }
+        if(l.id==='building'){ l.paint['fill-color']='#ebe4dc'; l.paint['fill-opacity']=['interpolate',['linear'],['zoom'],14.5,0,15.5,1]; }
+        if(l.id==='landcover-wood'){ l.paint['fill-opacity']=0.35; } });
+      style=j; }catch(e){}
+    MAP=new maplibregl.Map({container:'map',style,center:[127.8,36.5],zoom:6.5,attributionControl:{compact:true},dragRotate:false,pitchWithRotate:false});
+    MAP.touchZoomRotate.disableRotation();
+    if(isDesk()) MAP.addControl(new maplibregl.NavigationControl({showCompass:false}),'bottom-right');
+    await new Promise(res=>MAP.once('load',res));
+    MAP.addSource('lines',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
+    MAP.addLayer({id:'ln-from',type:'line',source:'lines',filter:['==',['get','k'],'from'],paint:{'line-color':'#b3453a','line-width':2,'line-dasharray':[1,3],'line-opacity':.85}});
+    MAP.addLayer({id:'ln-alt',type:'line',source:'lines',filter:['==',['get','k'],'alt'],paint:{'line-color':'#2f6a4e','line-width':2,'line-dasharray':[1,3],'line-opacity':.8}});
+    MAP.addLayer({id:'ln-route',type:'line',source:'lines',filter:['==',['get','k'],'route'],layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#2f6a4e','line-width':3.5,'line-opacity':.9}});
+    return MAP;
+  })();
+  return MAPREADY; }
+function padFit(pts){ if(!pts.length||!MAP) return; const h=innerHeight;
+  const pad=isDesk()?{top:80,left:16+432+40,bottom:40,right:40}:{top:80,left:24,bottom:Math.min(h*.5,peekPx()+40),right:24};
+  if(pts.length===1){ MAP.easeTo({center:pts[0],zoom:15,padding:pad,duration:600}); return; }
+  const b=pts.reduce((bb,p)=>bb.extend(p), new maplibregl.LngLatBounds(pts[0],pts[0]));
+  MAP.fitBounds(b,{padding:pad,maxZoom:15,duration:600}); }
+function clearLayer(){ MARKERS.forEach(m=>m.remove()); MARKERS=[]; MARK.clear(); MAP?.getSource('lines')?.setData({type:'FeatureCollection',features:[]}); }
+function addMarker(lnglat,html,cls,key,bg){
+  const el=document.createElement('div'); el.className='mkwrap'; el.innerHTML=`<div class="mk ${cls}">${html}</div>`; if(bg) el.firstChild.style.background=bg;
+  const m=new maplibregl.Marker({element:el,anchor:cls.includes(' n')||cls==='n'?'center':'bottom'}).setLngLat(lnglat).addTo(MAP); MARKERS.push(m);
+  if(key){ MARK.set(key,m); el.addEventListener('mouseenter',()=>hi(key,true)); el.addEventListener('mouseleave',()=>hi(null,true)); el.addEventListener('click',e=>{ e.stopPropagation(); onMarker(key); }); }
+  return m; }
+const lineF=(k,coords)=>({type:'Feature',properties:{k},geometry:{type:'LineString',coordinates:coords}});
+async function drawLayer(){
+  await ensureMap(); clearLayer();
+  if(!S) return; const y=S.selYmd, pts=[], lines=[];
+  const add=(lat,lng,html,cls,key,bg)=>{ addMarker([lng,lat],html,cls,key,bg); pts.push([lng,lat]); };
   if(VIEW===2 && COURSE){
-    const cols={a:'var(--accent-2)',c:'var(--mid)',w:'var(--data)'};
+    const cols={a:'#2a4a3a',c:'#a8701f',w:'#3d5573'};
     const s0=COURSE.stops[0], near=COURSE.from && haversine(COURSE.from.lat,COURSE.from.lng,s0.lat,s0.lng)<6000;
-    if(COURSE.from){ const m=L.marker([COURSE.from.lat,COURSE.from.lng],{icon:mkIcon(`<span>${esc(COURSE.fromHub)}</span><span class="v">${R(COURSE.fromRate)}</span>`,'busy dim')}).addTo(LAYER);
-      L.polyline([[COURSE.from.lat,COURSE.from.lng],[s0.lat,s0.lng]],{color:'oklch(50% 0.16 30)',weight:2,dashArray:'1 8',opacity:.8}).addTo(LAYER); if(near) pts.push([COURSE.from.lat,COURSE.from.lng]); }
-    COURSE.stops.forEach((s,i)=>add([s.lat,s.lng],String(i+1),'n',null).getElement().querySelector('.mk').style.background=cols[s.cls]);
-    L.polyline(COURSE.stops.map(s=>[s.lat,s.lng]),{color:'oklch(40% 0.095 158)',weight:3,className:'route'}).addTo(LAYER);
-    if(COURSE.stops.length===1) { padFit(pts); MAP.setZoom(15); return; }
+    if(COURSE.from){ addMarker([COURSE.from.lng,COURSE.from.lat],`<span>${esc(COURSE.fromHub)}</span><span class="v">${R(COURSE.fromRate)}</span>`,'busy dim');
+      lines.push(lineF('from',[[COURSE.from.lng,COURSE.from.lat],[s0.lng,s0.lat]])); if(near) pts.push([COURSE.from.lng,COURSE.from.lat]); }
+    COURSE.stops.forEach((s,i)=>add(s.lat,s.lng,String(i+1),'n',null,cols[s.cls]));
+    if(COURSE.stops.length>1) lines.push(lineF('route',COURSE.stops.map(s=>[s.lng,s.lat])));
   } else if(VIEW===1){
     const busy=S.anchors.map(a=>({...a,rate:rateOf(a.n1,y)})).filter(a=>a.rate!=null&&a.rate>=BUSY);
     S.anchors.forEach(a=>{ if(!a.lat) return; const v=rateOf(a.n1,y); const isB=v!=null&&v>=BUSY;
-      add([a.lat,a.lng],`<span>${esc(a.hub)}</span>${v!=null?`<span class="v">${R(v)}</span>`:''}`,`${v==null?'':band(v)} ${isB?'':'dim'}`,isB?`s:${a.code}`:null); });
+      add(a.lat,a.lng,`<span>${esc(a.hub)}</span>${v!=null?`<span class="v">${R(v)}</span>`:''}`,`${v==null?'':band(v)} ${isB?'':'dim'}`,isB?`s:${a.code}`:null); });
     busy.forEach(a=>{ const {best:b}=altsFor(a,y); if(!b) return; const c=coordsOf(b.rlteTatsNm); if(!c){ resolveAltCoords(a,b); return; }
-      add([c.lat,c.lng],`<span>${esc(b.rlteTatsNm)}</span><span class="v">${R(b.rate)}</span>`,'alt',`s:${a.code}`);
-      L.polyline([[a.lat,a.lng],[c.lat,c.lng]],{color:'oklch(40% 0.095 158)',weight:2,dashArray:'1 7',opacity:.7}).addTo(LAYER); });
+      add(c.lat,c.lng,`<span>${esc(b.rlteTatsNm)}</span><span class="v">${R(b.rate)}</span>`,'alt',`s:${a.code}`);
+      lines.push(lineF('alt',[[a.lng,a.lat],[c.lng,c.lat]])); });
   } else {
-    S.anchors.forEach(a=>{ if(!a.lat) return; const v=rateOf(a.n1,y); add([a.lat,a.lng],`<span>${esc(a.hub)}</span>${v!=null?`<span class="v">${R(v)}</span>`:''}`,v==null?'':band(v),`a:${a.code}`); });
+    S.anchors.forEach(a=>{ if(!a.lat) return; const v=rateOf(a.n1,y); add(a.lat,a.lng,`<span>${esc(a.hub)}</span>${v!=null?`<span class="v">${R(v)}</span>`:''}`,v==null?'':band(v),`a:${a.code}`); });
   }
+  MAP.getSource('lines').setData({type:'FeatureCollection',features:lines});
   padFit(pts);
   requestAnimationFrame(()=>document.querySelectorAll('.mk').forEach(el=>el.classList.add('pop')));
 }
-async function resolveAltCoords(a,b){ const r=await photoFor([b.rlteTatsNm,b.n1],b.rlteRegnCd,b.rlteSignguCd); if(!r||!r.lat||VIEW!==1||!LAYER) return;
-  const m=L.marker([r.lat,r.lng],{icon:mkIcon(`<span>${esc(b.rlteTatsNm)}</span><span class="v">${R(b.rate)}</span>`,'alt')}).addTo(LAYER); MARK.set(`s:${a.code}`,m);
-  m.on('mouseover',()=>hi(`s:${a.code}`,true)); m.on('mouseout',()=>hi(null,true)); m.on('click',()=>onMarker(`s:${a.code}`));
-  L.polyline([[a.lat,a.lng],[r.lat,r.lng]],{color:'oklch(40% 0.095 158)',weight:2,dashArray:'1 7',opacity:.7}).addTo(LAYER); }
+async function resolveAltCoords(a,b){ const r=await photoFor([b.rlteTatsNm,b.n1],b.rlteRegnCd,b.rlteSignguCd); if(!r||!r.lat||VIEW!==1||!MAP) return;
+  addMarker([r.lng,r.lat],`<span>${esc(b.rlteTatsNm)}</span><span class="v">${R(b.rate)}</span>`,'alt',`s:${a.code}`);
+  const src=MAP.getSource('lines'); const d=src._data||{type:'FeatureCollection',features:[]}; d.features.push(lineF('alt',[[a.lng,a.lat],[r.lng,r.lat]])); src.setData(d); }
 // brushing: card ⇄ marker
 function hi(key, fromMap){
   HI=key;
@@ -636,7 +685,7 @@ function hi(key, fromMap){
   if(fromMap&&key){ const el=document.querySelector(`[data-key="${key}"]`); el?.scrollIntoView({block:'nearest',behavior:'smooth'}); }
 }
 function onMarker(key){ hi(key,true); if(!isDesk()) setPeek('half'); }
-function focusAnchor(code){ const a=S.anchors.find(x=>x.code===code); if(a&&a.lat){ MAP.flyTo([a.lat,a.lng],15,{duration:.6}); } hi(`a:${code}`); }
+function focusAnchor(code){ const a=S.anchors.find(x=>x.code===code); if(a&&a.lat&&MAP){ MAP.flyTo({center:[a.lng,a.lat],zoom:15,duration:700}); } hi(`a:${code}`); }
 
 /* ═══════════ 네비게이션 · 시트 ═══════════ */
 function go(i){ VIEW=i; document.querySelectorAll('.seg [role=tab]').forEach((b,j)=>b.setAttribute('aria-selected',j===i)); $('segThumb').style.transform=`translateX(${i*100}%)`;
@@ -653,7 +702,7 @@ function setPeek(st){ peekState=st; $('panel').style.setProperty('--peek', Math.
   h.addEventListener('pointerdown',start); h.addEventListener('pointermove',move); h.addEventListener('pointerup',end); h.addEventListener('pointercancel',end);
   const head=p.querySelector('.phead'); head.addEventListener('pointerdown',e=>{ if(e.target.closest('button')) return; start(e); head.setPointerCapture?.(e.pointerId); }); head.addEventListener('pointermove',move); head.addEventListener('pointerup',end);
 })();
-addEventListener('resize',()=>{ setPeek(peekState); if(MAP){ MAP.invalidateSize(); if(S) drawLayer(); } });
+addEventListener('resize',()=>{ setPeek(peekState); if(MAP){ MAP.resize(); if(S) drawLayer(); } });
 
 function openPicker(){ const cur=S?.region.signguCd; const prov=[...new Set(REGIONS.map(r=>r[3]))];
   $('picker').innerHTML=`<header><h2>어디로 갈까요</h2><button class="x" onclick="closeAll()" aria-label="닫기">${ICON.x}</button></header>`+prov.map(pv=>`<h3>${pv}</h3><div class="rgrid">${REGIONS.filter(r=>r[3]===pv).map(([a,s,n,p])=>`<button aria-pressed="${s===cur}" onclick="pickRegion('${a}','${s}')">${n}</button>`).join('')}</div>`).join('');
@@ -688,7 +737,7 @@ function tick(el,to){ if(!el||matchMedia('(prefers-reduced-motion:reduce)').matc
 
 /* ═══════════ 초기화 ═══════════ */
 ensureMap(); setPeek('peek'); go(0);
-{ const q=new URLSearchParams(location.search); const hash=location.hash.slice(1)||q.get('r'); const r=REGIONS.find(x=>x[1]===hash)||REGIONS.find(x=>x[2]==='강남구');
+{ const q=new URLSearchParams(location.search); const hash=location.hash.slice(1)||q.get('r'); const r=REGIONS.find(x=>x[1]===hash)||REGIONS.find(x=>x[2]==='종로구');
   loadRegion(r[0],r[1],r[2],r[3]).then(()=>{ if(!S) return; const d=q.get('d'); if(d&&S.dates.includes(d)) pickDate(d); const v=+q.get('v'); if(v) go(v); if(q.get('c')){ const b=document.querySelectorAll('#alts .btn:not(.ghost)')[+q.get('c')-1]; b&&b.click(); } }); }
 </script>
 </body>

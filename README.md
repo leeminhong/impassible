@@ -42,7 +42,7 @@ API 키는 Vercel 서버리스 프록시(`impossible-tour-ai.vercel.app/api/kto`
 
 ## 화면 설계 (v3)
 
-- 지도가 무대: 풀블리드 OpenStreetMap 위에 데스크톱은 플로팅 패널, 모바일은 드래그 바텀시트(3단 스냅)
+- 지도가 무대: 풀블리드 벡터 지도(OpenFreeMap Bright, MapLibre) 위에 데스크톱은 플로팅 패널, 모바일은 드래그 바텀시트(3단 스냅)
 - 카드 ↔ 마커 브러싱: 카드에 올리면 지도 라벨이 커지고, 라벨을 누르면 카드로 스크롤
 - 마커는 라벨 핀(장소명 + 이곳 기준 지수), 대안은 앵커→대안 점선으로 "분산"을 그대로 보여줌
 - 사진은 TourAPI 검색 결과를 조용히 늦게 채움(없으면 자리표시)
@@ -52,6 +52,6 @@ API 키는 Vercel 서버리스 프록시(`impossible-tour-ai.vercel.app/api/kto`
 
 ## 구조
 
-- `index.html` — 단일 파일 SPA (Leaflet + OpenStreetMap 타일). 빌드 없음.
+- `index.html` — 단일 파일 SPA (MapLibre GL + OpenFreeMap 벡터 타일, 키 불필요). 빌드 없음. 줌 15 미만은 동네·공원·물만, 15 이상부터 도로명·건물·상점이 단계적으로 나타나도록 스타일을 조정.
 - URL 파라미터: `#<signguCd>` 또는 `?r=` 지역, `?d=YYYYMMDD` 날짜, `?v=0|1|2` 화면 (캡처·공유용)
 - 프록시 코드는 별도 저장소(`Impossible_tour_route`)의 `api/kto.js`.
